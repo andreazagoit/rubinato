@@ -1,4 +1,6 @@
-import { useMemo } from 'react';
+'use client';
+
+import { useTexture } from '@react-three/drei';
 import { Texture } from 'three';
 
 interface WallProps {

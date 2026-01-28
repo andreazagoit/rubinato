@@ -283,7 +283,7 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
             {activePopup === 'fail' && (
                 <Popup
                     title="SEI STATO RUBINATO"
-                    text="Hai esaurito il tempo. David ti ha trovato e non ha avuto pietà. Le prove sono andate perdute per sempre."
+                    text="Hai esaurito il tempo. David ti ha trovato e non ha avuto pietà."
                     buttonText="Riprova Infiltrazione"
                     onButtonClick={() => window.location.reload()}
                     isClosable={false}

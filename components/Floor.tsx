@@ -1,4 +1,4 @@
-import { Edges } from '@react-three/drei';
+import { useTexture } from '@react-three/drei';
 import { Texture } from 'three';
 
 interface FloorProps {

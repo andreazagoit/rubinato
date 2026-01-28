@@ -1,12 +1,14 @@
 'use client';
 
-import { useMemo, useEffect } from 'react';
-import { Room, RoomType, Direction } from '@/lib/types';
+import { useFrame } from '@react-three/fiber';
+import { Text, Billboard } from '@react-three/drei';
+import { useRef } from 'react';
+import { Room, RoomType } from '@/lib/types';
 import { Wall } from './Wall';
 import { Floor } from './Floor';
 import { Folder } from './Folder';
-import { DoubleSide, NearestFilter, RepeatWrapping, Texture } from 'three';
-import { ROOM_DEFINITIONS } from '@/lib/roomConfig';
+import { DoubleSide, BoxGeometry, MeshStandardMaterial, Texture as ThreeTexture } from 'three';
+import { ROOM_DEFINITIONS, Texture as RoomTextureId } from '@/lib/roomConfig';
 import { BoundaryType } from '@/lib/types';
 
 interface RoomViewProps {
@@ -15,19 +17,14 @@ interface RoomViewProps {
     showCeiling?: boolean;
     onCollectFolder?: (roomId: string) => void;
     textures: {
-        floor?: Texture;
-        wall?: Texture;
-        ceiling?: Texture;
+        floor?: ThreeTexture;
+        wall?: ThreeTexture;
+        ceiling?: ThreeTexture;
     };
 }
 
 export function RoomView({ room, cellSize = 10, showCeiling = true, onCollectFolder, textures }: RoomViewProps) {
     const style = ROOM_DEFINITIONS[room.type] || ROOM_DEFINITIONS.NORMAL;
-
-    const nBoundary = room.n;
-    const sBoundary = room.s;
-    const eBoundary = room.e;
-    const wBoundary = room.w;
 
     // Border color from config
     const borderColor = style.color;

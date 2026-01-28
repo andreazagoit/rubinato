@@ -2,7 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls, useKeyboardControls, SpotLight } from '@react-three/drei';
 import { useEffect, useRef } from 'react';
 import { Vector3, SpotLight as ThreeSpotLight } from 'three';
-import { Grid, Room, BoundaryType } from '@/lib/types';
+import { Grid, BoundaryType } from '@/lib/types';
 
 const SPEED = 5;
 const PLAYER_RADIUS = 1.2; // Increased size
