@@ -317,6 +317,15 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
                     }}
                 />
             )}
+
+            {/* Portrait Orientation Warning */}
+            <div className="hidden portrait:flex md:hidden fixed inset-0 z-[60] bg-black items-center justify-center flex-col gap-6 text-center p-8">
+                <div className="w-16 h-16 border-4 border-red-600 rounded-lg animate-pulse rotate-90 flex items-center justify-center">
+                    <div className="w-1 h-12 bg-red-600/50" />
+                </div>
+                <h2 className="text-red-600 font-black text-3xl uppercase tracking-widest">Ruota il Dispositivo</h2>
+                <p className="text-zinc-400 font-mono text-sm">L'esperienza richiede la visuale orizzontale.</p>
+            </div>
         </div>
     );
 }

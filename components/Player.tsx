@@ -47,20 +47,26 @@ export function Player({
 
         if (isPaused) return;
 
+        if (isPaused) return;
+
         // --- LOOK LOGIC (Mobile) ---
         if (mobileInput && (mobileInput.current.look.x !== 0 || mobileInput.current.look.y !== 0)) {
             const sensitivity = 0.005;
+
+            // Critical for FPS: Apply Yaw (Y) then Pitch (X). This prevents "rolling" when looking diag.
+            camera.rotation.order = 'YXZ';
+
             // Yaw (Y axis) - straightforward
             camera.rotation.y -= mobileInput.current.look.x * sensitivity;
 
             // Pitch (X axis) - clamped
-            // Note: PointerLockControls usually handles this internally. For mobile we do it manually.
-            // A simple implementation:
             camera.rotation.x -= mobileInput.current.look.y * sensitivity;
             camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
 
-            // Allow camera order to handle intrinsic rotation correctly if needed
-            // But reset the delta accumulator
+            // Force zero roll
+            camera.rotation.z = 0;
+
+            // Reset delta
             mobileInput.current.look = { x: 0, y: 0 };
         }
 
