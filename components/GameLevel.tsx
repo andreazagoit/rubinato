@@ -293,7 +293,7 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
             {activePopup === 'end' && (
                 <Popup
                     title="MISSIONE COMPIUTA"
-                    text="Hai recuperato tutte le cartelline. Le prove sono nelle tue mani. Ora devi solo sparire nel nulla prima che se ne accorga."
+                    text="Per ora sei salvo, ma l'unico vincitore qua sará King Ash"
                     buttonText="Torna al Menu"
                     onButtonClick={onBackToMenu}
                     isClosable={false}
