@@ -1,12 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { Room, RoomType, Direction } from '@/lib/types';
-import { Edges, Text } from '@react-three/drei';
+import { Edges, Text, useTexture } from '@react-three/drei';
 import { Wall } from './Wall';
 import { Floor } from './Floor';
 import { Folder } from './Folder';
-import { DoubleSide } from 'three';
+import { DoubleSide, NearestFilter, RepeatWrapping } from 'three';
 
 interface RoomViewProps {
     room: Room;
@@ -16,6 +16,25 @@ interface RoomViewProps {
 }
 
 export function RoomView({ room, cellSize = 10, showCeiling = true, onCollectFolder }: RoomViewProps) {
+    // Load Textures
+    const [floorTex, wallTex, ceilingTex] = useTexture([
+        '/textures/floor_wood_dark.png',
+        '/textures/wall_concrete_dark.png',
+        '/textures/ceiling_concrete_dark.png'
+    ]);
+
+    // Configure Textures
+    useEffect(() => {
+        [floorTex, wallTex, ceilingTex].forEach(t => {
+            t.magFilter = NearestFilter;
+            t.minFilter = NearestFilter;
+            t.wrapS = RepeatWrapping;
+            t.wrapT = RepeatWrapping;
+            t.repeat.set(4, 4);
+            t.needsUpdate = true;
+        });
+    }, [floorTex, wallTex, ceilingTex]);
+
     // Border color for room types
     const borderColor = useMemo(() => {
         if (room.type === RoomType.START) return '#4ade80'; // Green
@@ -45,15 +64,16 @@ export function RoomView({ room, cellSize = 10, showCeiling = true, onCollectFol
 
     return (
         <group position={finalPosition}>
-            {/* Floor with shader and colored edge */}
-            <Floor cellSize={cellSize} color={borderColor} />
+            {/* Floor with Texture */}
+            <Floor cellSize={cellSize} color={borderColor} texture={floorTex} />
 
-            {/* Ceiling */}
+            {/* Ceiling with Texture */}
             {showCeiling && (
-                <mesh position={[0, wallHeight, 0]}>
+                <mesh position={[0, wallHeight, 0]} rotation={[Math.PI, 0, 0]}>
                     <boxGeometry args={[cellSize, 0.3, cellSize]} />
                     <meshStandardMaterial
-                        color="#111111"
+                        map={ceilingTex}
+                        color="#888888" // Tint it slightly dark
                         side={DoubleSide}
                     />
                 </mesh>
@@ -96,6 +116,7 @@ export function RoomView({ room, cellSize = 10, showCeiling = true, onCollectFol
                     height={wallHeight}
                     thickness={wallThickness}
                     hasDoor={hasNorthDoor}
+                    texture={wallTex}
                 />
             </group>
 
@@ -106,6 +127,7 @@ export function RoomView({ room, cellSize = 10, showCeiling = true, onCollectFol
                     height={wallHeight}
                     thickness={wallThickness}
                     hasDoor={hasSouthDoor}
+                    texture={wallTex}
                 />
             </group>
 
@@ -116,6 +138,7 @@ export function RoomView({ room, cellSize = 10, showCeiling = true, onCollectFol
                     height={wallHeight}
                     thickness={wallThickness}
                     hasDoor={hasEastDoor}
+                    texture={wallTex}
                 />
             </group>
 
@@ -126,6 +149,7 @@ export function RoomView({ room, cellSize = 10, showCeiling = true, onCollectFol
                     height={wallHeight}
                     thickness={wallThickness}
                     hasDoor={hasWestDoor}
+                    texture={wallTex}
                 />
             </group>
         </group>

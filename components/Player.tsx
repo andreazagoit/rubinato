@@ -189,7 +189,7 @@ export function Player({
             {/* Flashlight - SpotLight following camera direction */}
             <spotLight
                 ref={spotlightRef}
-                intensity={8}
+                intensity={20}
                 angle={0.6}
                 penumbra={0.4}
                 distance={35}

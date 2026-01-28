@@ -1,13 +1,15 @@
 import { useMemo } from 'react';
+import { Texture } from 'three';
 
 interface WallProps {
-    width?: number; // Usually cellSize, e.g., 10
-    height?: number; // e.g., 4
-    thickness?: number; // e.g., 0.5
+    width?: number;
+    height?: number;
+    thickness?: number;
     hasDoor?: boolean;
     doorWidth?: number; // e.g., 3
     doorHeight?: number; // e.g., 3
     color?: string;
+    texture?: Texture;
 }
 
 export function Wall({
@@ -17,14 +19,16 @@ export function Wall({
     hasDoor = false,
     doorWidth = 4,
     doorHeight = 3,
-    color = "#374151"
+    color = "#374151",
+    texture
 }: WallProps) {
+    const matColor = texture ? '#ffffff' : color;
 
     if (!hasDoor) {
         return (
             <mesh position={[0, height / 2, 0]}>
                 <boxGeometry args={[width, height, thickness]} />
-                <meshStandardMaterial color={color} />
+                <meshStandardMaterial color={matColor} map={texture} />
             </mesh>
         );
     }
@@ -41,20 +45,20 @@ export function Wall({
             {/* Left Panel */}
             <mesh position={[-(width / 2) + (sideWidth / 2), height / 2, 0]}>
                 <boxGeometry args={[sideWidth, height, thickness]} />
-                <meshStandardMaterial color={color} />
+                <meshStandardMaterial color={matColor} map={texture} />
             </mesh>
 
             {/* Right Panel */}
             <mesh position={[(width / 2) - (sideWidth / 2), height / 2, 0]}>
                 <boxGeometry args={[sideWidth, height, thickness]} />
-                <meshStandardMaterial color={color} />
+                <meshStandardMaterial color={matColor} map={texture} />
             </mesh>
 
             {/* Header Panel (Above Door) */}
             {headerHeight > 0 && (
                 <mesh position={[0, doorHeight + (headerHeight / 2), 0]}>
                     <boxGeometry args={[doorWidth, headerHeight, thickness]} />
-                    <meshStandardMaterial color={color} />
+                    <meshStandardMaterial color={matColor} map={texture} />
                 </mesh>
             )}
         </group>

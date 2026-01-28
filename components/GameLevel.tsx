@@ -258,7 +258,7 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
             {activePopup === 'intro' && (
                 <Popup
                     title="Missione: Recupero Dati"
-                    text="Lui lo sa. David sa tutto. Ti intrufoli a casa sua per recuperare le cartelline prima di essere rubinato."
+                    text="David sa tutto. Ti intrufoli a casa sua per recuperare le cartelline prima di essere rubinato."
                     buttonText="Inizia Infiltrazione"
                     onClose={resumeGame}
                     onButtonClick={resumeGame}
