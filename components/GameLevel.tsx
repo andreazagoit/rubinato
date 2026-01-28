@@ -1,32 +1,44 @@
 'use client';
 
-import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Environment, KeyboardControls } from '@react-three/drei';
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { PerspectiveCamera, useKeyboardControls, useTexture } from '@react-three/drei';
+import { MapOverlay } from './MapOverlay';
+import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from 'react';
 import { MapGenerator } from '@/lib/mapGenerator';
+import { useGameStore } from '@/lib/store';
+import { SettingsPopup } from './SettingsPopup';
 import { Grid, Room, RoomType } from '@/lib/types';
 import { RoomView } from './RoomView';
 import { Player } from './Player';
 import { Popup } from './Popup';
 import { MobileControls } from './MobileControls';
+import { LoadingScreen } from './LoadingScreen';
+import { JumpscareOverlay } from './JumpscareOverlay';
+import { NearestFilter, RepeatWrapping, Texture as ThreeTexture } from 'three';
+import { Texture, ROOM_DEFINITIONS } from '@/lib/roomConfig';
 
 interface GameLevelProps {
-    mode?: 'FPS' | 'ORBIT';
     onBackToMenu?: () => void;
 }
 
 const CELL_SIZE = 10;
+const CULL_RADIUS = 3; // Render rooms within 3 cells of the player
 
-type PopupType = 'intro' | 'end' | null;
-
-export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
+export function GameLevel({ onBackToMenu }: GameLevelProps) {
     const [grid, setGrid] = useState<Grid | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [isPaused, setIsPaused] = useState(false);
+
+    const {
+        isPaused, setPaused,
+        activePopup, setActivePopup,
+        isJumpscareActive, setJumpscareActive,
+        showMap, setShowMap
+    } = useGameStore();
+
     const [playerGridPos, setPlayerGridPos] = useState<{ x: number; y: number }>({ x: 3, y: 0 });
     const [collectedFolders, setCollectedFolders] = useState<Set<string>>(new Set());
-    const [activePopup, setActivePopup] = useState<PopupType>('intro');
     const [startPos, setStartPos] = useState<[number, number, number] | null>(null);
+    const [movesLeft, setMovesLeft] = useState(30);
 
     // Mobile States
     const [isMobile, setIsMobile] = useState(false);
@@ -36,7 +48,6 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
     });
 
     useEffect(() => {
-        // Simple mobile detection
         const checkMobile = () => {
             return (typeof window !== 'undefined') &&
                 ('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -51,14 +62,10 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
             if (!next.has(roomId)) {
                 next.add(roomId);
                 console.log(`Collected folder in room ${roomId}. Total: ${next.size}`);
-                if (next.size === 3) {
-                    setActivePopup('end');
-                }
             }
             return next;
         });
 
-        // Update grid state to remove folder from room
         setGrid(prev => {
             if (!prev) return null;
             const newCells = prev.cells.map(row =>
@@ -72,6 +79,13 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
             return { ...prev, cells: newCells };
         });
     }, []);
+
+    // Effect to check for win condition
+    useEffect(() => {
+        if (collectedFolders.size === 3) {
+            setActivePopup('end');
+        }
+    }, [collectedFolders.size, setActivePopup]);
 
     useEffect(() => {
         const generator = new MapGenerator();
@@ -87,7 +101,6 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
                 }
             }
             setPlayerGridPos({ x: sx, y: sy });
-            // World Z is -y * CELL_SIZE. X is x * CELL_SIZE.
             setStartPos([sx * CELL_SIZE, 1.7, -sy * CELL_SIZE]);
 
         } catch (e: any) {
@@ -95,10 +108,12 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
         }
     }, []);
 
-    // Handle player position change - convert world coords to grid coords
+    const isInitialPositionSync = useRef(true);
+
     const handlePositionChange = useCallback((pos: { x: number; y: number; z: number }) => {
         const gridX = Math.round(pos.x / CELL_SIZE);
-        const gridY = Math.round(-pos.z / CELL_SIZE); // -Z is +Y in grid
+        const gridY = Math.round(-pos.z / CELL_SIZE);
+
         setPlayerGridPos(prev => {
             if (prev.x !== gridX || prev.y !== gridY) {
                 return { x: gridX, y: gridY };
@@ -107,41 +122,83 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
         });
     }, []);
 
+    useEffect(() => {
+        if (!isInitialPositionSync.current) {
+            setMovesLeft(m => Math.max(0, m - 1));
+        } else {
+            isInitialPositionSync.current = false;
+        }
+    }, [playerGridPos.x, playerGridPos.y]);
+
     const allRooms = useMemo(() => {
         if (!grid) return [];
         return grid.cells.flat().filter(r => r !== null) as Room[];
     }, [grid]);
 
-    // Filter visible rooms: current room + adjacent rooms (max 5 rooms)
+    // Proximity Culling Logic
     const visibleRooms = useMemo(() => {
-        if (mode === 'ORBIT') return allRooms; // Show all in map view
-
         return allRooms.filter(room => {
             const dx = Math.abs(room.coordinates.x - playerGridPos.x);
             const dy = Math.abs(room.coordinates.y - playerGridPos.y);
-            // Current room or directly adjacent (N, S, E, W)
-            return (dx === 0 && dy === 0) || (dx + dy === 1);
+            return dx <= CULL_RADIUS && dy <= CULL_RADIUS;
         });
-    }, [allRooms, playerGridPos, mode]);
+    }, [allRooms, playerGridPos]);
 
-    // Force unlock pointer when popup or pause is active
+    // Handle Jumpscare and Fail sequence
+    useEffect(() => {
+        if (movesLeft === 0 && activePopup !== 'fail') {
+            const sequence = async () => {
+                // 1. Play sound immediately (1s before image)
+                const thunder = new Audio('/thunder.mp3');
+                thunder.volume = 1.0;
+                thunder.play().catch(() => { });
+
+                // 2. Wait 1 second (suspense)
+                await new Promise(r => setTimeout(r, 1000));
+
+                // 3. Jumpscare Image (0.5 seconds)
+                setJumpscareActive(true);
+                await new Promise(r => setTimeout(r, 500));
+                setJumpscareActive(false);
+
+                // 4. Final black screen delay (0.5 seconds)
+                await new Promise(r => setTimeout(r, 500));
+
+                // 5. Show Fail Popup
+                setActivePopup('fail');
+            };
+            sequence();
+        }
+    }, [movesLeft, setJumpscareActive, setActivePopup, activePopup]);
+
     useEffect(() => {
         if ((activePopup || isPaused) && typeof document !== 'undefined' && document.exitPointerLock) {
             document.exitPointerLock();
         }
     }, [activePopup, isPaused]);
 
-    // Helper to resume game and request pointer lock
+    const [sub] = useKeyboardControls();
+
+    useEffect(() => {
+        return sub(
+            (state: any) => state.map,
+            (pressed: boolean) => {
+                if (pressed && !activePopup && !isPaused) {
+                    setShowMap(!showMap);
+                }
+            }
+        );
+    }, [showMap, setShowMap, sub, activePopup, isPaused]);
+
     const resumeGame = useCallback(() => {
         setActivePopup(null);
-        setIsPaused(false);
-
-        // Synchronous request to satisfy user gesture requirement
+        setPaused(false);
+        setShowMap(false);
         const canvas = document.querySelector('canvas');
         if (canvas && canvas.requestPointerLock) {
             canvas.requestPointerLock();
         }
-    }, []);
+    }, [setActivePopup, setPaused, setShowMap]);
 
     if (error) {
         return <div className="text-red-500 font-bold p-10 font-mono tracking-tighter uppercase underline decoration-double">
@@ -155,106 +212,63 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
 
     return (
         <div className="w-full h-screen bg-black overflow-hidden relative">
-            <KeyboardControls
-                map={[
-                    { name: 'forward', keys: ['ArrowUp', 'w', 'W'] },
-                    { name: 'backward', keys: ['ArrowDown', 's', 'S'] },
-                    { name: 'left', keys: ['ArrowLeft', 'a', 'A'] },
-                    { name: 'right', keys: ['ArrowRight', 'd', 'D'] },
-                    { name: 'interact', keys: ['e', 'E'] },
-                ]}
-            >
-                <Canvas shadows>
-                    {mode === 'FPS' ? (
-                        <Player
-                            position={startPos}
-                            isPaused={isPaused || !!activePopup}
-                            onLock={() => setIsPaused(false)}
-                            onUnlock={() => setIsPaused(true)}
-                            onPositionChange={handlePositionChange}
-                            mobileInput={mobileInput}
-                            grid={grid}
-                            cellSize={CELL_SIZE}
-                        />
-                    ) : (
-                        <>
-                            <PerspectiveCamera makeDefault position={[35, 80, 40]} fov={50} />
-                            <OrbitControls target={[35, 0, -35]} makeDefault />
-                        </>
-                    )}
+            <LoadingScreen />
 
-                    {/* Horror atmosphere: almost pitch black, flashlight is the only light */}
-                    <ambientLight intensity={mode === 'FPS' ? 0.01 : 1.2} />
-                    {mode === 'ORBIT' && (
-                        <directionalLight position={[10, 50, 20]} intensity={1.5} castShadow />
-                    )}
+            <Canvas shadows>
+                <Suspense fallback={null}>
+                    <GameContent
+                        startPos={startPos}
+                        isPaused={isPaused || !!activePopup || showMap}
+                        setPaused={setPaused}
+                        handlePositionChange={handlePositionChange}
+                        mobileInput={mobileInput}
+                        grid={grid}
+                        visibleRooms={visibleRooms}
+                        handleCollectFolder={handleCollectFolder}
+                    />
+                </Suspense>
+            </Canvas>
 
-                    {/* Fog for horror atmosphere in FPS mode */}
-                    {mode === 'FPS' && <fog attach="fog" args={['#000000', 3, 20]} />}
-
-                    <group>
-                        {visibleRooms.map(room => (
-                            <RoomView
-                                key={room.id}
-                                room={room}
-                                cellSize={CELL_SIZE}
-                                showCeiling={mode === 'FPS'}
-                                onCollectFolder={handleCollectFolder}
-                            />
-                        ))}
-                    </group>
-
-                    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[35, -0.2, -35]}>
-                        <planeGeometry args={[200, 200]} />
-                        <meshStandardMaterial color="#0a0a0a" />
-                    </mesh>
-                </Canvas>
-
-                {/* Gameplay elements */}
-                {mode === 'FPS' && !activePopup && !isPaused && (
-                    <>
-                        {/* Crosshair - HIDDEN ON MOBILE */}
-                        {!isMobile && (
-                            <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2 pointer-events-none mix-blend-difference" />
-                        )}
-
-                        {/* Folder Counter - Top Left on Mobile, Bottom Left on Desktop */}
-                        <div className="absolute top-4 left-4 md:top-auto md:bottom-10 md:left-10 text-white font-mono bg-black/40 p-4 border-l-4 border-red-600 backdrop-blur-sm animate-pulse z-30">
-                            <div className="text-xs text-zinc-400 uppercase tracking-widest mb-1">Cartelline Raccolte</div>
-                            <div className="text-3xl font-black flex items-center gap-2">
-                                <span className="text-red-500">{collectedFolders.size}</span>
-                                <span className="text-zinc-600">/</span>
-                                <span>3</span>
-                            </div>
-                        </div>
-                    </>
-                )}
-
-                {/* Pause / Info UI */}
-                {isPaused && mode === 'FPS' && !activePopup && (
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-50">
-                        <div className="text-center space-y-8 animate-in fade-in zoom-in duration-300">
-                            <h2 className="text-6xl font-black text-red-600 tracking-tighter uppercase italic">PAUSED</h2>
-                            <div className="flex flex-col gap-4">
-                                <button
-                                    onClick={resumeGame}
-                                    className="px-12 py-4 bg-zinc-100 text-black font-black uppercase hover:bg-white transition-colors tracking-widest text-lg"
-                                >
-                                    Resume
-                                </button>
-                                <button
-                                    onClick={onBackToMenu}
-                                    className="px-12 py-4 border-2 border-zinc-500 text-zinc-500 font-black uppercase hover:border-white hover:text-white transition-all tracking-widest"
-                                >
-                                    Back to Menu
-                                </button>
-                            </div>
+            {/* HUD */}
+            {!activePopup && !isPaused && (
+                <div className="absolute top-4 left-4 md:top-10 md:left-10 flex flex-col gap-4 z-30">
+                    <div className="text-white font-mono bg-black/40 p-4 border-l-4 border-red-600 backdrop-blur-sm animate-pulse">
+                        <div className="text-xs text-zinc-400 uppercase tracking-widest mb-1">Cartelline Raccolte</div>
+                        <div className="text-3xl font-black flex items-center gap-2">
+                            <span className="text-red-500">{collectedFolders.size}</span>
+                            <span className="text-zinc-600">/</span>
+                            <span>3</span>
                         </div>
                     </div>
-                )}
-            </KeyboardControls>
 
-            {/* Popups */}
+                    <div className="text-white font-mono bg-black/40 p-4 border-l-4 border-yellow-500 backdrop-blur-sm animate-pulse">
+                        <div className="text-xs text-zinc-400 uppercase tracking-widest mb-1">Passi Rimanenti</div>
+                        <div className="text-4xl font-black text-yellow-500">{movesLeft}</div>
+                    </div>
+                </div>
+            )}
+
+            {!activePopup && !isPaused && !isMobile && (
+                <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2 pointer-events-none mix-blend-difference z-20" />
+            )}
+
+            {isPaused && !activePopup && (
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-50">
+                    <div className="text-center space-y-8 animate-in fade-in zoom-in duration-300">
+                        <h2 className="text-6xl font-black text-red-600 tracking-tighter uppercase italic">PAUSED</h2>
+                        <div className="flex flex-col gap-4">
+                            <button onClick={resumeGame} className="px-12 py-4 bg-zinc-100 text-black font-black uppercase hover:bg-white transition-colors tracking-widest text-lg">Resume</button>
+                            <button onClick={() => setActivePopup('settings')} className="px-12 py-4 border-2 border-zinc-500 text-zinc-500 font-black uppercase hover:border-white hover:text-white transition-all tracking-widest">Impostazioni</button>
+                            <button onClick={onBackToMenu} className="px-12 py-4 border-2 border-zinc-500 text-zinc-500 font-black uppercase hover:border-white hover:text-white transition-all tracking-widest">Back to Menu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showMap && grid && <MapOverlay grid={grid} playerPos={playerGridPos} />}
+            {activePopup === 'settings' && <SettingsPopup />}
+            {isJumpscareActive && <JumpscareOverlay />}
+
             {activePopup === 'intro' && (
                 <Popup
                     title="Missione: Recupero Dati"
@@ -263,6 +277,16 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
                     onClose={resumeGame}
                     onButtonClick={resumeGame}
                     isClosable={true}
+                />
+            )}
+
+            {activePopup === 'fail' && (
+                <Popup
+                    title="SEI STATO RUBINATO"
+                    text="Hai esaurito il tempo. David ti ha trovato e non ha avuto pietà. Le prove sono andate perdute per sempre."
+                    buttonText="Riprova Infiltrazione"
+                    onButtonClick={() => window.location.reload()}
+                    isClosable={false}
                 />
             )}
 
@@ -276,51 +300,17 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
                 />
             )}
 
-            {/* Static UI for non-FPS mode or debug info */}
-            {mode === 'ORBIT' && (
-                <div className="absolute top-5 left-5 text-white bg-black/80 p-6 border border-zinc-800 rounded shadow-2xl backdrop-blur-sm">
-                    <h1 className="text-2xl font-black uppercase tracking-tighter text-red-600 mb-2">Architect View</h1>
-                    <p className="text-zinc-400 text-sm mb-4">Observe the madness from safety.</p>
-                    <div className="space-y-1 text-xs font-mono">
-                        <div className="flex justify-between gap-4">
-                            <span className="text-zinc-500">GRID_SIZE</span>
-                            <span>7 x 7</span>
-                        </div>
-                        <div className="flex justify-between gap-4">
-                            <span className="text-zinc-500">OBJECTIVES</span>
-                            <span className="text-red-500">4 LOCATED</span>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="mt-6 w-full py-2 bg-red-600 text-white font-bold rounded hover:bg-red-700 transition-colors uppercase text-xs"
-                    >
-                        Re-construct Map
-                    </button>
-                </div>
-            )}
-
-            {/* Mobile Controls Overlay */}
-            {isMobile && !isPaused && !activePopup && mode === 'FPS' && (
+            {isMobile && !isPaused && !activePopup && (
                 <MobileControls
-                    onMove={(x, y) => {
-                        mobileInput.current.move = { x, y };
-                    }}
-                    onLook={(dx, dy) => {
-                        mobileInput.current.look.x += dx;
-                        mobileInput.current.look.y += dy;
-                    }}
+                    onMove={(x, y) => { mobileInput.current.move = { x, y }; }}
+                    onLook={(dx, dy) => { mobileInput.current.look.x += dx; mobileInput.current.look.y += dy; }}
                     onInteract={() => {
-                        // Dispatch 'E' key press for Folder component
                         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', code: 'KeyE' }));
-                        setTimeout(() => {
-                            window.dispatchEvent(new KeyboardEvent('keyup', { key: 'e', code: 'KeyE' }));
-                        }, 100);
+                        setTimeout(() => window.dispatchEvent(new KeyboardEvent('keyup', { key: 'e', code: 'KeyE' })), 100);
                     }}
                 />
             )}
 
-            {/* Portrait Orientation Warning */}
             <div className="hidden portrait:flex md:hidden fixed inset-0 z-[60] bg-black items-center justify-center flex-col gap-6 text-center p-8">
                 <div className="w-16 h-16 border-4 border-red-600 rounded-lg animate-pulse rotate-90 flex items-center justify-center">
                     <div className="w-1 h-12 bg-red-600/50" />
@@ -329,5 +319,80 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
                 <p className="text-zinc-400 font-mono text-sm">L'esperienza richiede la visuale orizzontale.</p>
             </div>
         </div>
+    );
+}
+
+// Sub-component to handle texture loading and 3D content
+function GameContent({
+    startPos, isPaused, setPaused, handlePositionChange, mobileInput,
+    grid, visibleRooms, handleCollectFolder
+}: any) {
+    const textures = useTexture({
+        [Texture.FLOOR_WOOD_DARK]: Texture.FLOOR_WOOD_DARK,
+        [Texture.FLOOR_ASPHALT]: Texture.FLOOR_ASPHALT,
+        [Texture.WALL_CONCRETE_DARK]: Texture.WALL_CONCRETE_DARK,
+        [Texture.WALL_CONCRETE_PANEL]: Texture.WALL_CONCRETE_PANEL,
+        [Texture.WALL_BRUTALIST_DARK]: Texture.WALL_BRUTALIST_DARK,
+        [Texture.CEILING_CONCRETE_DARK]: Texture.CEILING_CONCRETE_DARK,
+        [Texture.CEILING_INDUSTRIAL_DARK]: Texture.CEILING_INDUSTRIAL_DARK,
+    });
+
+    // Configure textures
+    useMemo(() => {
+        Object.values(textures).forEach(t => {
+            if (t instanceof ThreeTexture) {
+                t.magFilter = NearestFilter;
+                t.minFilter = NearestFilter;
+                t.wrapS = RepeatWrapping;
+                t.wrapT = RepeatWrapping;
+                t.repeat.set(4, 4);
+            }
+        });
+    }, [textures]);
+
+    return (
+        <>
+            <Player
+                position={startPos}
+                isPaused={isPaused}
+                onLock={() => setPaused(false)}
+                onUnlock={() => setPaused(true)}
+                onPositionChange={handlePositionChange}
+                mobileInput={mobileInput}
+                grid={grid}
+                cellSize={CELL_SIZE}
+            />
+
+            <ambientLight intensity={0.01} />
+            <fog attach="fog" args={['#000000', 3, 20]} />
+
+            <group>
+                {visibleRooms.map((room: Room) => {
+                    const style = ROOM_DEFINITIONS[room.type] || ROOM_DEFINITIONS.NORMAL;
+
+                    const roomTextures = {
+                        floor: style.floor ? (textures as any)[style.floor] : undefined,
+                        wall: style.wall ? (textures as any)[style.wall] : undefined,
+                        ceiling: style.ceiling ? (textures as any)[style.ceiling] : undefined
+                    };
+
+                    return (
+                        <RoomView
+                            key={room.id}
+                            room={room}
+                            cellSize={CELL_SIZE}
+                            showCeiling={true}
+                            onCollectFolder={handleCollectFolder}
+                            textures={roomTextures}
+                        />
+                    );
+                })}
+            </group>
+
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[35, -0.2, -35]}>
+                <planeGeometry args={[200, 200]} />
+                <meshStandardMaterial color="#0a0a0a" />
+            </mesh>
+        </>
     );
 }

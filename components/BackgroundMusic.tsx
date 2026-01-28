@@ -1,10 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useGameStore } from '@/lib/store';
 
 export function BackgroundMusic() {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    useEffect(() => {
+        if (audioRef.current) {
+            audioRef.current.volume = 0.05;
+        }
+    }, []);
 
     useEffect(() => {
         const attemptPlay = () => {

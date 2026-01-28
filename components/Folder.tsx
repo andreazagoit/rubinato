@@ -1,23 +1,38 @@
 'use client';
 
-import { useCursor, Text, useKeyboardControls, Billboard } from '@react-three/drei';
-import { useState, useEffect } from 'react';
+import { Text, useKeyboardControls, Billboard } from '@react-three/drei';
+import { useState, useEffect, Suspense } from 'react';
 
 interface FolderProps {
     onCollect: () => void;
     position?: [number, number, number];
 }
 
+function FolderPrompt() {
+    return (
+        <Billboard position={[0, 0.6, 0]}>
+            <Text
+                fontSize={0.12}
+                color="white"
+                anchorX="center"
+                anchorY="middle"
+                outlineWidth={0.01}
+                outlineColor="black"
+            >
+                PREMI [E] PER RACCOGLIERE
+            </Text>
+        </Billboard>
+    );
+}
+
 export function Folder({ onCollect, position = [0, 0.5, 0] }: FolderProps) {
     const [hovered, setHovered] = useState(false);
     const [subscribeKeys] = useKeyboardControls();
 
-    useCursor(hovered);
-
     // Interaction logic
     useEffect(() => {
         return subscribeKeys(
-            (state) => state.interact,
+            (state: any) => state?.interact,
             (pressed) => {
                 if (pressed && hovered) {
                     onCollect();
@@ -30,8 +45,14 @@ export function Folder({ onCollect, position = [0, 0.5, 0] }: FolderProps) {
         <group position={position}>
             {/* The Folder Group */}
             <group
-                onPointerOver={() => setHovered(true)}
-                onPointerOut={() => setHovered(false)}
+                onPointerOver={(e) => {
+                    e.stopPropagation();
+                    setHovered(true);
+                }}
+                onPointerOut={(e) => {
+                    e.stopPropagation();
+                    setHovered(false);
+                }}
             >
                 {/* The Folder visual */}
                 <mesh castShadow receiveShadow>
@@ -45,20 +66,11 @@ export function Folder({ onCollect, position = [0, 0.5, 0] }: FolderProps) {
                     <meshStandardMaterial color="#ffffff" />
                 </mesh>
 
-                {/* Prompt Text - Billboarded to face player */}
+                {/* Prompt Text - Focused Suspense to prevent global flicker */}
                 {hovered && (
-                    <Billboard position={[0, 0.6, 0]}>
-                        <Text
-                            fontSize={0.12}
-                            color="white"
-                            anchorX="center"
-                            anchorY="middle"
-                            outlineWidth={0.01}
-                            outlineColor="black"
-                        >
-                            PREMI [E] PER RACCOGLIERE
-                        </Text>
-                    </Billboard>
+                    <Suspense fallback={null}>
+                        <FolderPrompt />
+                    </Suspense>
                 )}
 
                 {/* Subtle glow if hovered */}

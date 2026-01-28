@@ -6,7 +6,8 @@ export enum RoomType {
   OBJECTIVE = 'OBJECTIVE',
   EVENT = 'EVENT',
   END = 'END',
-  EMPTY = 'EMPTY'
+  EMPTY = 'EMPTY',
+  PARKING = 'PARKING'
 }
 
 export enum Rarity {
@@ -37,6 +38,12 @@ export interface RoomState {
   isLocked: boolean;
 }
 
+export enum BoundaryType {
+  NULL = 'NULL',   // No boundary (open space)
+  WALL = 'WALL',   // Solid wall
+  DOOR = 'DOOR'    // Doorway/Exit
+}
+
 export interface Room {
   id: string; // UUID
   coordinates: Coordinates;
@@ -48,7 +55,10 @@ export interface Room {
   rarity: Rarity;
 
   // Visuals & Layout
-  exits: Direction[]; // Final active exits
+  n: BoundaryType;
+  s: BoundaryType;
+  e: BoundaryType;
+  w: BoundaryType;
   rotation: 0 | 90 | 180 | 270;
   theme: string;
 

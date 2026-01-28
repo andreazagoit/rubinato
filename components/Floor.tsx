@@ -13,7 +13,7 @@ export function Floor({ cellSize, color, texture }: FloorProps) {
             <planeGeometry args={[cellSize, cellSize]} />
             <meshStandardMaterial
                 map={texture}
-                color={texture ? '#ffffff' : '#333333'} // White if texture, else dark
+                color={texture ? "#ffffff" : color}
             />
         </mesh>
     );

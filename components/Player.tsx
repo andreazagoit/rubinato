@@ -2,7 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls, useKeyboardControls, SpotLight } from '@react-three/drei';
 import { useEffect, useRef } from 'react';
 import { Vector3, SpotLight as ThreeSpotLight } from 'three';
-import { Grid, Room } from '@/lib/types';
+import { Grid, Room, BoundaryType } from '@/lib/types';
 
 const SPEED = 5;
 const PLAYER_RADIUS = 1.2; // Increased size
@@ -135,29 +135,26 @@ export function Player({
 
                     // WEST WALL (-X)
                     if (lx < -boundary) {
-                        if (!room.exits.includes('W') || Math.abs(lz) > DOOR_WIDTH / 2) {
+                        if (room.w === BoundaryType.WALL || (room.w === BoundaryType.DOOR && Math.abs(lz) > DOOR_WIDTH / 2)) {
                             candidatePos.x = roomCenterX - boundary;
                         }
                     }
                     // EAST WALL (+X)
                     else if (lx > boundary) {
-                        if (!room.exits.includes('E') || Math.abs(lz) > DOOR_WIDTH / 2) {
+                        if (room.e === BoundaryType.WALL || (room.e === BoundaryType.DOOR && Math.abs(lz) > DOOR_WIDTH / 2)) {
                             candidatePos.x = roomCenterX + boundary;
                         }
                     }
 
-                    // SOUTH WALL (-Z direction for world? No. S is usually +Z or -Z depending on coord sys.
-                    // GameLevel: -z/10 = gridY. So Z=-10 is gridY=1 (South of 0,0).
-                    // So -Z direction is South.
-                    // lz < -boundary means moving South (towards -Z).
+                    // NORTH WALL (-Z direction for world)
                     if (lz < -boundary) {
-                        if (!room.exits.includes('S') || Math.abs(lx) > DOOR_WIDTH / 2) {
+                        if (room.n === BoundaryType.WALL || (room.n === BoundaryType.DOOR && Math.abs(lx) > DOOR_WIDTH / 2)) {
                             candidatePos.z = roomCenterZ - boundary;
                         }
                     }
-                    // NORTH WALL (+Z direction)
+                    // SOUTH WALL (+Z direction)
                     else if (lz > boundary) {
-                        if (!room.exits.includes('N') || Math.abs(lx) > DOOR_WIDTH / 2) {
+                        if (room.s === BoundaryType.WALL || (room.s === BoundaryType.DOOR && Math.abs(lx) > DOOR_WIDTH / 2)) {
                             candidatePos.z = roomCenterZ + boundary;
                         }
                     }
@@ -189,7 +186,7 @@ export function Player({
             {/* Flashlight - SpotLight following camera direction */}
             <spotLight
                 ref={spotlightRef}
-                intensity={20}
+                intensity={40}
                 angle={0.6}
                 penumbra={0.4}
                 distance={35}

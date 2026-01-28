@@ -2,60 +2,41 @@
 
 import { useMemo, useEffect } from 'react';
 import { Room, RoomType, Direction } from '@/lib/types';
-import { Edges, Text, useTexture } from '@react-three/drei';
 import { Wall } from './Wall';
 import { Floor } from './Floor';
 import { Folder } from './Folder';
-import { DoubleSide, NearestFilter, RepeatWrapping } from 'three';
+import { DoubleSide, NearestFilter, RepeatWrapping, Texture } from 'three';
+import { ROOM_DEFINITIONS } from '@/lib/roomConfig';
+import { BoundaryType } from '@/lib/types';
 
 interface RoomViewProps {
     room: Room;
     cellSize?: number;
     showCeiling?: boolean;
     onCollectFolder?: (roomId: string) => void;
+    textures: {
+        floor?: Texture;
+        wall?: Texture;
+        ceiling?: Texture;
+    };
 }
 
-export function RoomView({ room, cellSize = 10, showCeiling = true, onCollectFolder }: RoomViewProps) {
-    // Load Textures
-    const [floorTex, wallTex, ceilingTex] = useTexture([
-        '/textures/floor_wood_dark.png',
-        '/textures/wall_concrete_dark.png',
-        '/textures/ceiling_concrete_dark.png'
-    ]);
+export function RoomView({ room, cellSize = 10, showCeiling = true, onCollectFolder, textures }: RoomViewProps) {
+    const style = ROOM_DEFINITIONS[room.type] || ROOM_DEFINITIONS.NORMAL;
 
-    // Configure Textures
-    useEffect(() => {
-        [floorTex, wallTex, ceilingTex].forEach(t => {
-            t.magFilter = NearestFilter;
-            t.minFilter = NearestFilter;
-            t.wrapS = RepeatWrapping;
-            t.wrapT = RepeatWrapping;
-            t.repeat.set(4, 4);
-            t.needsUpdate = true;
-        });
-    }, [floorTex, wallTex, ceilingTex]);
+    const nBoundary = room.n;
+    const sBoundary = room.s;
+    const eBoundary = room.e;
+    const wBoundary = room.w;
 
-    // Border color for room types
-    const borderColor = useMemo(() => {
-        if (room.type === RoomType.START) return '#4ade80'; // Green
-        if (room.type === RoomType.OBJECTIVE) return '#f87171'; // Red
-        return '#333333'; // Dark gray for corridors
-    }, [room.type]);
+    // Border color from config
+    const borderColor = style.color;
 
     const wallThickness = 0.5;
     const wallHeight = 4;
     const halfSize = cellSize / 2;
     const wallOffset = halfSize - wallThickness / 2;
 
-    // Grid Y increases downward, but 3D Z decreases northward
-    // So grid 'N' (y--) = toward +Z = 3D South
-    // And grid 'S' (y++) = toward -Z = 3D North
-    const hasNorthDoor = room.exits.includes('S'); // Grid S = 3D North
-    const hasSouthDoor = room.exits.includes('N'); // Grid N = 3D South
-    const hasEastDoor = room.exits.includes('E');
-    const hasWestDoor = room.exits.includes('W');
-
-    // Grid Y is -Z in world space
     const finalPosition: [number, number, number] = [
         room.coordinates.x * cellSize,
         0,
@@ -65,14 +46,16 @@ export function RoomView({ room, cellSize = 10, showCeiling = true, onCollectFol
     return (
         <group position={finalPosition}>
             {/* Floor with Texture */}
-            <Floor cellSize={cellSize} color={borderColor} texture={floorTex} />
+            {style.floor && (
+                <Floor cellSize={cellSize} color={borderColor} texture={textures.floor} />
+            )}
 
             {/* Ceiling with Texture */}
-            {showCeiling && (
+            {showCeiling && style.ceiling && (
                 <mesh position={[0, wallHeight, 0]} rotation={[Math.PI, 0, 0]}>
                     <boxGeometry args={[cellSize, 0.3, cellSize]} />
                     <meshStandardMaterial
-                        map={ceilingTex}
+                        map={textures.ceiling}
                         color="#888888" // Tint it slightly dark
                         side={DoubleSide}
                     />
@@ -87,71 +70,66 @@ export function RoomView({ room, cellSize = 10, showCeiling = true, onCollectFol
                 </mesh>
             )}
 
-            {room.items.includes('red_folder') && (
+            {room.items?.includes('red_folder') && (
                 <Folder
                     onCollect={() => onCollectFolder?.(room.id)}
                     position={[0, 1.05, 0]}
                 />
             )}
 
-            {/* Room Name - Floating */}
-            <group position={[0, 2.5, 0]}>
-                <Text
-                    fontSize={0.8}
-                    color="black"
-                    anchorX="center"
-                    anchorY="middle"
-                    fillOpacity={0.5}
-                >
-                    {room.name}
-                </Text>
-            </group>
-
-            {/* Walls - door if exit exists, solid wall if no exit */}
+            {/* Walls - based on n, s, e, w boundaries */}
 
             {/* North wall (Z = -offset) */}
-            <group position={[0, 0, -wallOffset]}>
-                <Wall
-                    width={cellSize}
-                    height={wallHeight}
-                    thickness={wallThickness}
-                    hasDoor={hasNorthDoor}
-                    texture={wallTex}
-                />
-            </group>
+            {room.n !== BoundaryType.NULL && style.wall && (
+                <group position={[0, 0, -wallOffset]}>
+                    <Wall
+                        width={cellSize}
+                        height={wallHeight}
+                        thickness={wallThickness}
+                        hasDoor={room.n === BoundaryType.DOOR}
+                        texture={textures.wall}
+                    />
+                </group>
+            )}
 
             {/* South wall (Z = +offset) */}
-            <group position={[0, 0, wallOffset]} rotation={[0, Math.PI, 0]}>
-                <Wall
-                    width={cellSize}
-                    height={wallHeight}
-                    thickness={wallThickness}
-                    hasDoor={hasSouthDoor}
-                    texture={wallTex}
-                />
-            </group>
+            {room.s !== BoundaryType.NULL && style.wall && (
+                <group position={[0, 0, wallOffset]} rotation={[0, Math.PI, 0]}>
+                    <Wall
+                        width={cellSize}
+                        height={wallHeight}
+                        thickness={wallThickness}
+                        hasDoor={room.s === BoundaryType.DOOR}
+                        texture={textures.wall}
+                    />
+                </group>
+            )}
 
             {/* East wall (X = +offset) */}
-            <group position={[wallOffset, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
-                <Wall
-                    width={cellSize}
-                    height={wallHeight}
-                    thickness={wallThickness}
-                    hasDoor={hasEastDoor}
-                    texture={wallTex}
-                />
-            </group>
+            {room.e !== BoundaryType.NULL && style.wall && (
+                <group position={[wallOffset, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
+                    <Wall
+                        width={cellSize}
+                        height={wallHeight}
+                        thickness={wallThickness}
+                        hasDoor={room.e === BoundaryType.DOOR}
+                        texture={textures.wall}
+                    />
+                </group>
+            )}
 
             {/* West wall (X = -offset) */}
-            <group position={[-wallOffset, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
-                <Wall
-                    width={cellSize}
-                    height={wallHeight}
-                    thickness={wallThickness}
-                    hasDoor={hasWestDoor}
-                    texture={wallTex}
-                />
-            </group>
+            {room.w !== BoundaryType.NULL && style.wall && (
+                <group position={[-wallOffset, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+                    <Wall
+                        width={cellSize}
+                        height={wallHeight}
+                        thickness={wallThickness}
+                        hasDoor={room.w === BoundaryType.DOOR}
+                        texture={textures.wall}
+                    />
+                </group>
+            )}
         </group>
     );
 }
