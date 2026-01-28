@@ -173,6 +173,8 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
                             onUnlock={() => setIsPaused(true)}
                             onPositionChange={handlePositionChange}
                             mobileInput={mobileInput}
+                            grid={grid}
+                            cellSize={CELL_SIZE}
                         />
                     ) : (
                         <>

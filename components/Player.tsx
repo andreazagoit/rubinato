@@ -2,8 +2,11 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls, useKeyboardControls, SpotLight } from '@react-three/drei';
 import { useEffect, useRef } from 'react';
 import { Vector3, SpotLight as ThreeSpotLight } from 'three';
+import { Grid, Room } from '@/lib/types';
 
 const SPEED = 5;
+const PLAYER_RADIUS = 1.2; // Increased size
+const DOOR_WIDTH = 3.0; // Half width effectively 1.5
 
 interface PlayerProps {
     position?: [number, number, number];
@@ -15,6 +18,8 @@ interface PlayerProps {
         move: { x: number, y: number },
         look: { x: number, y: number }
     }>;
+    grid?: Grid | null;
+    cellSize?: number;
 }
 
 export function Player({
@@ -23,7 +28,9 @@ export function Player({
     onLock,
     onUnlock,
     onPositionChange,
-    mobileInput
+    mobileInput,
+    grid,
+    cellSize = 10
 }: PlayerProps) {
     const { camera } = useThree();
     const [, get] = useKeyboardControls();
@@ -103,7 +110,64 @@ export function Player({
 
         if (moveVec.length() > 0) {
             moveVec.normalize().multiplyScalar(SPEED * delta);
-            camera.position.add(moveVec);
+
+            // --- COLLISION LOGIC ---
+            const currentPos = camera.position.clone();
+            const candidatePos = currentPos.clone().add(moveVec);
+
+            if (grid) {
+                // Note: Rooms are at (cx * 10, -, -cy * 10). 
+                const gx = Math.round(candidatePos.x / cellSize);
+                const gy = Math.round(-candidatePos.z / cellSize);
+
+                const room = grid.cells[gy]?.[gx];
+
+                if (room) {
+                    // Calculate local position within the room (0,0 is center)
+                    const roomCenterX = gx * cellSize;
+                    const roomCenterZ = -gy * cellSize;
+
+                    const lx = candidatePos.x - roomCenterX;
+                    const lz = candidatePos.z - roomCenterZ;
+
+                    const halfSize = cellSize / 2;
+                    const boundary = halfSize - PLAYER_RADIUS;
+
+                    // WEST WALL (-X)
+                    if (lx < -boundary) {
+                        if (!room.exits.includes('W') || Math.abs(lz) > DOOR_WIDTH / 2) {
+                            candidatePos.x = roomCenterX - boundary;
+                        }
+                    }
+                    // EAST WALL (+X)
+                    else if (lx > boundary) {
+                        if (!room.exits.includes('E') || Math.abs(lz) > DOOR_WIDTH / 2) {
+                            candidatePos.x = roomCenterX + boundary;
+                        }
+                    }
+
+                    // SOUTH WALL (-Z direction for world? No. S is usually +Z or -Z depending on coord sys.
+                    // GameLevel: -z/10 = gridY. So Z=-10 is gridY=1 (South of 0,0).
+                    // So -Z direction is South.
+                    // lz < -boundary means moving South (towards -Z).
+                    if (lz < -boundary) {
+                        if (!room.exits.includes('S') || Math.abs(lx) > DOOR_WIDTH / 2) {
+                            candidatePos.z = roomCenterZ - boundary;
+                        }
+                    }
+                    // NORTH WALL (+Z direction)
+                    else if (lz > boundary) {
+                        if (!room.exits.includes('N') || Math.abs(lx) > DOOR_WIDTH / 2) {
+                            candidatePos.z = roomCenterZ + boundary;
+                        }
+                    }
+                }
+            } else {
+                // Fallback if no grid (shouldn't happen in game)
+                // Just apply movement
+            }
+
+            camera.position.copy(candidatePos);
 
             // Report position change for room culling
             if (onPositionChange) {
