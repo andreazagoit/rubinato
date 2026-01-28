@@ -11,6 +11,10 @@ interface PlayerProps {
     onLock?: () => void;
     onUnlock?: () => void;
     onPositionChange?: (pos: { x: number; y: number; z: number }) => void;
+    mobileInput?: React.MutableRefObject<{
+        move: { x: number, y: number },
+        look: { x: number, y: number }
+    }>;
 }
 
 export function Player({
@@ -18,7 +22,8 @@ export function Player({
     isPaused = false,
     onLock,
     onUnlock,
-    onPositionChange
+    onPositionChange,
+    mobileInput
 }: PlayerProps) {
     const { camera } = useThree();
     const [, get] = useKeyboardControls();
@@ -42,6 +47,23 @@ export function Player({
 
         if (isPaused) return;
 
+        // --- LOOK LOGIC (Mobile) ---
+        if (mobileInput && (mobileInput.current.look.x !== 0 || mobileInput.current.look.y !== 0)) {
+            const sensitivity = 0.005;
+            // Yaw (Y axis) - straightforward
+            camera.rotation.y -= mobileInput.current.look.x * sensitivity;
+
+            // Pitch (X axis) - clamped
+            // Note: PointerLockControls usually handles this internally. For mobile we do it manually.
+            // A simple implementation:
+            camera.rotation.x -= mobileInput.current.look.y * sensitivity;
+            camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+
+            // Allow camera order to handle intrinsic rotation correctly if needed
+            // But reset the delta accumulator
+            mobileInput.current.look = { x: 0, y: 0 };
+        }
+
         const { forward, backward, left, right } = get();
 
         // 1. Get Forward Vector (Flattened to stay on ground)
@@ -55,10 +77,23 @@ export function Player({
         rightVec.crossVectors(forwardVec, new Vector3(0, 1, 0)).normalize();
 
         const moveVec = new Vector3();
+
+        // Keyboard Input
         if (forward) moveVec.add(forwardVec);
         if (backward) moveVec.sub(forwardVec);
         if (right) moveVec.add(rightVec);
         if (left) moveVec.sub(rightVec);
+
+        // Mobile Input
+        if (mobileInput) {
+            // y is forward/back axis. Negative y is "up" on screen -> Forward
+            if (mobileInput.current.move.y < 0) moveVec.add(forwardVec.clone().multiplyScalar(Math.abs(mobileInput.current.move.y)));
+            if (mobileInput.current.move.y > 0) moveVec.sub(forwardVec.clone().multiplyScalar(mobileInput.current.move.y));
+
+            // x is strafe. Positive x is right.
+            if (mobileInput.current.move.x > 0) moveVec.add(rightVec.clone().multiplyScalar(mobileInput.current.move.x));
+            if (mobileInput.current.move.x < 0) moveVec.sub(rightVec.clone().multiplyScalar(Math.abs(mobileInput.current.move.x)));
+        }
 
         if (moveVec.length() > 0) {
             moveVec.normalize().multiplyScalar(SPEED * delta);

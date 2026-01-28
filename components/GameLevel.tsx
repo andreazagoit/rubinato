@@ -2,12 +2,13 @@
 
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment, KeyboardControls } from '@react-three/drei';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { MapGenerator } from '@/lib/mapGenerator';
 import { Grid, Room, RoomType } from '@/lib/types';
 import { RoomView } from './RoomView';
 import { Player } from './Player';
 import { Popup } from './Popup';
+import { MobileControls } from './MobileControls';
 
 interface GameLevelProps {
     mode?: 'FPS' | 'ORBIT';
@@ -25,8 +26,23 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
     const [playerGridPos, setPlayerGridPos] = useState<{ x: number; y: number }>({ x: 3, y: 0 });
     const [collectedFolders, setCollectedFolders] = useState<Set<string>>(new Set());
     const [activePopup, setActivePopup] = useState<PopupType>('intro');
-
     const [startPos, setStartPos] = useState<[number, number, number] | null>(null);
+
+    // Mobile States
+    const [isMobile, setIsMobile] = useState(false);
+    const mobileInput = useRef({
+        move: { x: 0, y: 0 },
+        look: { x: 0, y: 0 }
+    });
+
+    useEffect(() => {
+        // Simple mobile detection
+        const checkMobile = () => {
+            return (typeof window !== 'undefined') &&
+                ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+        };
+        setIsMobile(checkMobile());
+    }, []);
 
     // Handle folder collection
     const handleCollectFolder = useCallback((roomId: string) => {
@@ -110,7 +126,7 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
 
     // Force unlock pointer when popup or pause is active
     useEffect(() => {
-        if (activePopup || isPaused) {
+        if ((activePopup || isPaused) && typeof document !== 'undefined' && document.exitPointerLock) {
             document.exitPointerLock();
         }
     }, [activePopup, isPaused]);
@@ -122,7 +138,7 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
 
         // Synchronous request to satisfy user gesture requirement
         const canvas = document.querySelector('canvas');
-        if (canvas) {
+        if (canvas && canvas.requestPointerLock) {
             canvas.requestPointerLock();
         }
     }, []);
@@ -156,6 +172,7 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
                             onLock={() => setIsPaused(false)}
                             onUnlock={() => setIsPaused(true)}
                             onPositionChange={handlePositionChange}
+                            mobileInput={mobileInput}
                         />
                     ) : (
                         <>
@@ -194,11 +211,13 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
                 {/* Gameplay elements */}
                 {mode === 'FPS' && !activePopup && !isPaused && (
                     <>
-                        {/* Crosshair */}
-                        <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2 pointer-events-none mix-blend-difference" />
+                        {/* Crosshair - HIDDEN ON MOBILE */}
+                        {!isMobile && (
+                            <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2 pointer-events-none mix-blend-difference" />
+                        )}
 
-                        {/* Folder Counter */}
-                        <div className="absolute bottom-10 left-10 text-white font-mono bg-black/40 p-4 border-l-4 border-red-600 backdrop-blur-sm animate-pulse">
+                        {/* Folder Counter - Top Left on Mobile, Bottom Left on Desktop */}
+                        <div className="absolute top-4 left-4 md:top-auto md:bottom-10 md:left-10 text-white font-mono bg-black/40 p-4 border-l-4 border-red-600 backdrop-blur-sm animate-pulse z-30">
                             <div className="text-xs text-zinc-400 uppercase tracking-widest mb-1">Cartelline Raccolte</div>
                             <div className="text-3xl font-black flex items-center gap-2">
                                 <span className="text-red-500">{collectedFolders.size}</span>
@@ -277,6 +296,26 @@ export function GameLevel({ mode = 'FPS', onBackToMenu }: GameLevelProps) {
                         Re-construct Map
                     </button>
                 </div>
+            )}
+
+            {/* Mobile Controls Overlay */}
+            {isMobile && !isPaused && !activePopup && mode === 'FPS' && (
+                <MobileControls
+                    onMove={(x, y) => {
+                        mobileInput.current.move = { x, y };
+                    }}
+                    onLook={(dx, dy) => {
+                        mobileInput.current.look.x += dx;
+                        mobileInput.current.look.y += dy;
+                    }}
+                    onInteract={() => {
+                        // Dispatch 'E' key press for Folder component
+                        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', code: 'KeyE' }));
+                        setTimeout(() => {
+                            window.dispatchEvent(new KeyboardEvent('keyup', { key: 'e', code: 'KeyE' }));
+                        }, 100);
+                    }}
+                />
             )}
         </div>
     );
