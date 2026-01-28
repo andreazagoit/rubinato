@@ -63,7 +63,7 @@ export interface Room {
   theme: string;
 
   // Contents
-  staticObjects: any[];
+  staticObjects: unknown[];
   interactables: string[];
   items: string[];
   events: string[];

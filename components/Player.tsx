@@ -39,6 +39,8 @@ export function Player({
     // Initial Spawn
     useEffect(() => {
         camera.position.set(...position);
+        // eslint-disable-next-line react-hooks/immutability
+        camera.rotation.order = 'YXZ';
     }, [position, camera]);
 
     useFrame((_, delta) => {
@@ -54,26 +56,26 @@ export function Player({
 
         if (isPaused) return;
 
-        if (isPaused) return;
-
         // --- LOOK LOGIC (Mobile) ---
         if (mobileInput && (mobileInput.current.look.x !== 0 || mobileInput.current.look.y !== 0)) {
             const sensitivity = 0.005;
 
-            // Critical for FPS: Apply Yaw (Y) then Pitch (X). This prevents "rolling" when looking diag.
-            camera.rotation.order = 'YXZ';
-
             // Yaw (Y axis) - straightforward
+            // eslint-disable-next-line react-hooks/immutability
             camera.rotation.y -= mobileInput.current.look.x * sensitivity;
 
             // Pitch (X axis) - clamped
+            // eslint-disable-next-line react-hooks/immutability
             camera.rotation.x -= mobileInput.current.look.y * sensitivity;
+            // eslint-disable-next-line react-hooks/immutability
             camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
 
             // Force zero roll
+            // eslint-disable-next-line react-hooks/immutability
             camera.rotation.z = 0;
 
             // Reset delta
+            // eslint-disable-next-line react-hooks/immutability
             mobileInput.current.look = { x: 0, y: 0 };
         }
 

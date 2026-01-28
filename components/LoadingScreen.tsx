@@ -14,8 +14,6 @@ export function LoadingScreen() {
                 setVisible(false);
             }, 500);
             return () => clearTimeout(timer);
-        } else {
-            setVisible(true);
         }
     }, [active]);
 

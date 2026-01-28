@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useGameStore } from '@/lib/store';
 
 export function BackgroundMusic() {
     const audioRef = useRef<HTMLAudioElement>(null);

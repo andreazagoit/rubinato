@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas } from '@react-three/fiber';
-import { PerspectiveCamera, useKeyboardControls, useTexture } from '@react-three/drei';
+import { useKeyboardControls, useTexture } from '@react-three/drei';
 import { MapOverlay } from './MapOverlay';
 import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from 'react';
 import { MapGenerator } from '@/lib/mapGenerator';
@@ -37,23 +37,18 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
 
     const [playerGridPos, setPlayerGridPos] = useState<{ x: number; y: number }>({ x: 3, y: 0 });
     const [collectedFolders, setCollectedFolders] = useState<Set<string>>(new Set());
-    const [startPos, setStartPos] = useState<[number, number, number] | null>(null);
+    const [startPos, setStartPos] = useState<[number, number, number] | undefined>(undefined);
     const [movesLeft, setMovesLeft] = useState(30);
 
     // Mobile States
-    const [isMobile, setIsMobile] = useState(false);
+    const [isMobile] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    });
     const mobileInput = useRef({
         move: { x: 0, y: 0 },
         look: { x: 0, y: 0 }
     });
-
-    useEffect(() => {
-        const checkMobile = () => {
-            return (typeof window !== 'undefined') &&
-                ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-        };
-        setIsMobile(checkMobile());
-    }, []);
 
     // Handle folder collection
     const handleCollectFolder = useCallback((roomId: string) => {
@@ -91,6 +86,7 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
         const generator = new MapGenerator();
         try {
             const g = generator.generate();
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setGrid(g);
             let sx = 3, sy = 0;
             for (let y = 0; y < g.height; y++) {
@@ -100,13 +96,16 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
                     }
                 }
             }
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setPlayerGridPos({ x: sx, y: sy });
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setStartPos([sx * CELL_SIZE, 1.7, -sy * CELL_SIZE]);
 
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setError(e instanceof Error ? e.message : "Unknown error");
         }
-    }, []);
+    }, [setGrid, setPlayerGridPos, setStartPos, setError]);
 
     const isInitialPositionSync = useRef(true);
 
@@ -124,6 +123,7 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
 
     useEffect(() => {
         if (!isInitialPositionSync.current) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setMovesLeft(m => Math.max(0, m - 1));
         } else {
             isInitialPositionSync.current = false;
@@ -181,7 +181,7 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
 
     useEffect(() => {
         return sub(
-            (state: any) => state.map,
+            (state: { map?: boolean }) => !!state.map,
             (pressed: boolean) => {
                 if (pressed && !activePopup && !isPaused) {
                     setShowMap(!showMap);
@@ -271,9 +271,9 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
 
             {activePopup === 'intro' && (
                 <Popup
-                    title="Missione: Recupero Dati"
-                    text="David sa tutto. Ti intrufoli a casa sua per recuperare le cartelline prima di essere rubinato."
-                    buttonText="Inizia Infiltrazione"
+                    title="Missione: Er progetto cartellina rossa "
+                    text="La cavallona ha rivelato il tradimento con Grace a David. Devi correre nello studio a cercare le cartelline rosse che ha su di te prima che ti distrugga"
+                    buttonText="Continua"
                     onClose={resumeGame}
                     onButtonClick={resumeGame}
                     isClosable={true}
@@ -316,7 +316,7 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
                     <div className="w-1 h-12 bg-red-600/50" />
                 </div>
                 <h2 className="text-red-600 font-black text-3xl uppercase tracking-widest">Ruota il Dispositivo</h2>
-                <p className="text-zinc-400 font-mono text-sm">L'esperienza richiede la visuale orizzontale.</p>
+                <p className="text-zinc-400 font-mono text-sm">L&apos;esperienza richiede la visuale orizzontale.</p>
             </div>
         </div>
     );
@@ -326,7 +326,19 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
 function GameContent({
     startPos, isPaused, setPaused, handlePositionChange, mobileInput,
     grid, visibleRooms, handleCollectFolder
-}: any) {
+}: {
+    startPos: [number, number, number] | undefined;
+    isPaused: boolean;
+    setPaused: (p: boolean) => void;
+    handlePositionChange: (p: { x: number, y: number, z: number }) => void;
+    mobileInput: React.MutableRefObject<{
+        move: { x: number, y: number },
+        look: { x: number, y: number }
+    }>;
+    grid: Grid | null;
+    visibleRooms: Room[];
+    handleCollectFolder: (id: string) => void;
+}) {
     const textures = useTexture({
         [Texture.FLOOR_WOOD_DARK]: Texture.FLOOR_WOOD_DARK,
         [Texture.FLOOR_ASPHALT]: Texture.FLOOR_ASPHALT,
@@ -357,7 +369,7 @@ function GameContent({
                 isPaused={isPaused}
                 onLock={() => setPaused(false)}
                 onUnlock={() => setPaused(true)}
-                onPositionChange={handlePositionChange}
+                onPositionChange={({ x, y, z }: { x: number, y: number, z: number }) => handlePositionChange({ x, y, z })}
                 mobileInput={mobileInput}
                 grid={grid}
                 cellSize={CELL_SIZE}
@@ -370,10 +382,11 @@ function GameContent({
                 {visibleRooms.map((room: Room) => {
                     const style = ROOM_DEFINITIONS[room.type] || ROOM_DEFINITIONS.NORMAL;
 
+                    const texMap = textures as Record<string, ThreeTexture>;
                     const roomTextures = {
-                        floor: style.floor ? (textures as any)[style.floor] : undefined,
-                        wall: style.wall ? (textures as any)[style.wall] : undefined,
-                        ceiling: style.ceiling ? (textures as any)[style.ceiling] : undefined
+                        floor: style.floor ? texMap[style.floor] : undefined,
+                        wall: style.wall ? texMap[style.wall] : undefined,
+                        ceiling: style.ceiling ? texMap[style.ceiling] : undefined
                     };
 
                     return (

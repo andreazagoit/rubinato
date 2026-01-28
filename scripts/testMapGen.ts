@@ -28,10 +28,10 @@ try {
                 continue;
             }
 
-            const hasN = room.exits.includes('N');
-            const hasS = room.exits.includes('S');
-            const hasE = room.exits.includes('E');
-            const hasW = room.exits.includes('W');
+            const hasN = room.n === 'DOOR';
+            const hasS = room.s === 'DOOR';
+            const hasE = room.e === 'DOOR';
+            const hasW = room.w === 'DOOR';
 
             // Center char
             let char = '.';
@@ -79,8 +79,8 @@ try {
     console.log(`Objectives Count: ${objectives.length} (Expected 3)`);
 
     // Log Exits of Start/End
-    console.log(`Start Exits: ${start?.exits.join(',')}`);
-    console.log(`End Exits: ${end?.exits.join(',')}`);
+    console.log(`Start Boundaries: N:${start?.n}, S:${start?.s}, E:${start?.e}, W:${start?.w}`);
+    console.log(`End Boundaries: N:${end?.n}, S:${end?.s}, E:${end?.e}, W:${end?.w}`);
 
 } catch (e) {
     console.error("Generation failed:", e);

@@ -14,7 +14,7 @@ export function SettingsPopup() {
                 </h2>
 
                 <div className="text-zinc-500 font-mono text-sm uppercase tracking-tight text-center py-10 italic">
-                    "Ho fatto questo gioco in un ora, cazzo vuoi, pure le impostazioni??"
+                    &quot;Ho fatto questo gioco in un ora, cazzo vuoi, pure le impostazioni??&quot;
                 </div>
 
                 {/* Actions */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 interface MobileControlsProps {
     onMove: (x: number, y: number) => void;
@@ -9,7 +9,6 @@ interface MobileControlsProps {
 }
 
 export function MobileControls({ onMove, onLook, onInteract }: MobileControlsProps) {
-    const joystickRef = useRef<HTMLDivElement>(null);
     const [joystickActive, setJoystickActive] = useState(false);
     const [joystickPos, setJoystickPos] = useState({ x: 0, y: 0 });
     const touchStartPos = useRef({ x: 0, y: 0 });
@@ -110,7 +109,7 @@ export function MobileControls({ onMove, onLook, onInteract }: MobileControlsPro
                 <div
                     className="absolute top-1/2 left-1/2 w-16 h-16 bg-white/40 rounded-full -translate-x-1/2 -translate-y-1/2 shadow-lg backdrop-blur-sm border border-white/50"
                     style={{
-                        transform: `translate(calc(-50% + ${joystickPos.x}px), calc(-50% + ${joystickPos.y}px))`
+                        transform: `translate(calc(-50 % + ${joystickPos.x}px), calc(-50 % + ${joystickPos.y}px))`
                     }}
                 />
             </div>

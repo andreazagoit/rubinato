@@ -32,7 +32,7 @@ export function Folder({ onCollect, position = [0, 0.5, 0] }: FolderProps) {
     // Interaction logic
     useEffect(() => {
         return subscribeKeys(
-            (state: any) => state?.interact,
+            (state: { interact?: boolean }) => !!state?.interact,
             (pressed) => {
                 if (pressed && hovered) {
                     onCollect();

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Grid, RoomType, BoundaryType } from '@/lib/types';
+import { Grid, BoundaryType } from '@/lib/types';
 import { ROOM_DEFINITIONS } from '@/lib/roomConfig';
 import { useGameStore } from '@/lib/store';
 

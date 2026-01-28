@@ -7,15 +7,15 @@ interface GameState {
     activePopup: 'intro' | 'end' | 'settings' | 'fail' | null;
     setActivePopup: (p: 'intro' | 'end' | 'settings' | 'fail' | null) => void;
 
-    isJumpscareActive: boolean;
-    setJumpscareActive: (active: boolean) => void;
-
     // Gameplay State (Transient for now, could be persisted if needed)
     isPaused: boolean;
     setPaused: (p: boolean) => void;
 
     showMap: boolean;
     setShowMap: (s: boolean) => void;
+
+    isJumpscareActive: boolean;
+    setJumpscareActive: (active: boolean) => void;
 
     resetGameState: () => void;
 }
@@ -42,17 +42,17 @@ export const useGameStore = create<GameState>()(
             isPaused: false,
             setPaused: (isPaused) => set({ isPaused }),
 
-            isJumpscareActive: false,
-            setJumpscareActive: (isJumpscareActive) => set({ isJumpscareActive }),
-
             showMap: false,
             setShowMap: (showMap) => set({ showMap }),
 
+            isJumpscareActive: false,
+            setJumpscareActive: (isJumpscareActive) => set({ isJumpscareActive }),
+
             resetGameState: () => set({
                 activePopup: 'intro',
-                isPaused: false,
-                isJumpscareActive: false,
-                showMap: false
+                isPaused: true,
+                showMap: false,
+                isJumpscareActive: false
             }),
         }),
         {

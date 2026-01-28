@@ -1,4 +1,4 @@
-import { Grid, Room, RoomType, Coordinates, Direction, Rarity, BoundaryType } from './types';
+import { Grid, Room, RoomType, Direction, BoundaryType } from './types';
 
 function generateId(): string {
     return Math.random().toString(36).substring(2, 15);
@@ -33,6 +33,23 @@ export class MapGenerator {
             height: HEIGHT,
             cells: Array(HEIGHT).fill(null).map(() => Array(WIDTH).fill(null))
         };
+    }
+
+    // Helper to create a room and set initial boundaries to WALL
+    private createRoom(x: number, y: number, type: RoomType, name: string): void {
+        const newRoom: Room = {
+            id: generateId(),
+            x,
+            y,
+            type,
+            name,
+            n: BoundaryType.WALL,
+            s: BoundaryType.WALL,
+            e: BoundaryType.WALL,
+            w: BoundaryType.WALL,
+            items: []
+        };
+        this.grid.cells[y][x] = newRoom;
     }
 
     generate(): Grid {
@@ -121,7 +138,7 @@ export class MapGenerator {
                 const room = this.grid.cells[y][x];
                 if (!room) continue;
 
-                const exits: Direction[] = [];
+                const exits: Direction[] = []; // This variable is declared but never used.
 
                 if (room.type === RoomType.OBJECTIVE) {
                     const objData = objectiveData.find(o => o.x === x && o.y === y)!;
@@ -400,7 +417,7 @@ export class MapGenerator {
         };
 
         let reachable = getReachable();
-        let allValidRooms: { x: number, y: number }[] = [];
+        const allValidRooms: { x: number, y: number }[] = [];
         for (let y = 0; y < HEIGHT; y++) {
             for (let x = 0; x < WIDTH; x++) {
                 if (isValid(x, y) && this.grid.cells[y][x]?.type !== RoomType.EMPTY) {

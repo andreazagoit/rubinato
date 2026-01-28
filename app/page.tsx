@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { GameLevel } from "@/components/GameLevel";
-import Link from "next/link";
 import Image from "next/image";
 import coverImg from "./cover.png";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
