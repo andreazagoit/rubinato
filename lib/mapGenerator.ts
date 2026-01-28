@@ -1,4 +1,4 @@
-import { Grid, Room, RoomType, Direction, BoundaryType } from './types';
+import { Grid, Room, RoomType, Rarity, Direction, BoundaryType } from './types';
 
 function generateId(): string {
     return Math.random().toString(36).substring(2, 15);
@@ -39,15 +39,22 @@ export class MapGenerator {
     private createRoom(x: number, y: number, type: RoomType, name: string): void {
         const newRoom: Room = {
             id: generateId(),
-            x,
-            y,
-            type,
+            coordinates: { x, y },
+            type: type,
+            templateId: type.toLowerCase(),
             name,
+            rarity: Rarity.COMMON,
             n: BoundaryType.WALL,
             s: BoundaryType.WALL,
             e: BoundaryType.WALL,
             w: BoundaryType.WALL,
-            items: []
+            rotation: 0,
+            theme: 'default',
+            staticObjects: [],
+            interactables: [],
+            items: [],
+            events: [],
+            state: { isVisited: false, isLocked: false }
         };
         this.grid.cells[y][x] = newRoom;
     }
@@ -464,29 +471,6 @@ export class MapGenerator {
             if (!carved) break; // Should not happen if map is contiguous
             reachable = getReachable();
         }
-    }
-
-    private createRoom(x: number, y: number, type: RoomType, name: string) {
-        const room: Room = {
-            id: generateId(),
-            coordinates: { x, y },
-            type: type,
-            templateId: type.toLowerCase(),
-            name: name,
-            rarity: Rarity.COMMON,
-            n: BoundaryType.WALL,
-            s: BoundaryType.WALL,
-            e: BoundaryType.WALL,
-            w: BoundaryType.WALL,
-            rotation: 0,
-            theme: 'default',
-            staticObjects: [],
-            interactables: [],
-            items: [],
-            events: [],
-            state: { isVisited: false, isLocked: false }
-        };
-        this.grid.cells[y][x] = room;
     }
 
     private getReciprocal(dir: Direction): Direction {

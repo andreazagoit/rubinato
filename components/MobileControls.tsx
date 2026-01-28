@@ -109,7 +109,7 @@ export function MobileControls({ onMove, onLook, onInteract }: MobileControlsPro
                 <div
                     className="absolute top-1/2 left-1/2 w-16 h-16 bg-white/40 rounded-full -translate-x-1/2 -translate-y-1/2 shadow-lg backdrop-blur-sm border border-white/50"
                     style={{
-                        transform: `translate(calc(-50 % + ${joystickPos.x}px), calc(-50 % + ${joystickPos.y}px))`
+                        transform: `translate(calc(-50% + ${joystickPos.x}px), calc(-50% + ${joystickPos.y}px))`
                     }}
                 />
             </div>
