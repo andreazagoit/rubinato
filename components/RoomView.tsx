@@ -1,14 +1,11 @@
 'use client';
 
-import { useFrame } from '@react-three/fiber';
-import { Text, Billboard } from '@react-three/drei';
-import { useRef } from 'react';
 import { Room, RoomType } from '@/lib/types';
 import { Wall } from './Wall';
 import { Floor } from './Floor';
 import { Folder } from './Folder';
-import { DoubleSide, BoxGeometry, MeshStandardMaterial, Texture as ThreeTexture } from 'three';
-import { ROOM_DEFINITIONS, Texture as RoomTextureId } from '@/lib/roomConfig';
+import { DoubleSide, Texture as ThreeTexture } from 'three';
+import { ROOM_DEFINITIONS } from '@/lib/roomConfig';
 import { BoundaryType } from '@/lib/types';
 
 interface RoomViewProps {

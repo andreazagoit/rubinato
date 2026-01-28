@@ -1,5 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber';
-import { PointerLockControls, useKeyboardControls, SpotLight } from '@react-three/drei';
+import { PointerLockControls, useKeyboardControls } from '@react-three/drei';
 import { useEffect, useRef } from 'react';
 import { Vector3, SpotLight as ThreeSpotLight } from 'three';
 import { Grid, BoundaryType } from '@/lib/types';

@@ -38,7 +38,25 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
     const [playerGridPos, setPlayerGridPos] = useState<{ x: number; y: number }>({ x: 3, y: 0 });
     const [collectedFolders, setCollectedFolders] = useState<Set<string>>(new Set());
     const [startPos, setStartPos] = useState<[number, number, number] | undefined>(undefined);
-    const [movesLeft, setMovesLeft] = useState(30);
+    const [timeLeft, setTimeLeft] = useState(60); // 1 minute in seconds
+
+    // Countdown Timer Logic
+    useEffect(() => {
+        if (isPaused || !!activePopup || timeLeft <= 0) return;
+
+        const timer = setInterval(() => {
+            setTimeLeft(prev => Math.max(0, prev - 1));
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [isPaused, activePopup, timeLeft]);
+
+    // Format time for HUD
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
 
     // Mobile States
     const [isMobile] = useState(() => {
@@ -83,8 +101,8 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
     }, [collectedFolders.size, setActivePopup]);
 
     useEffect(() => {
-        const generator = new MapGenerator();
         try {
+            const generator = new MapGenerator();
             const g = generator.generate();
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setGrid(g);
@@ -107,8 +125,6 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
         }
     }, [setGrid, setPlayerGridPos, setStartPos, setError]);
 
-    const isInitialPositionSync = useRef(true);
-
     const handlePositionChange = useCallback((pos: { x: number; y: number; z: number }) => {
         const gridX = Math.round(pos.x / CELL_SIZE);
         const gridY = Math.round(-pos.z / CELL_SIZE);
@@ -120,15 +136,6 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
             return prev;
         });
     }, []);
-
-    useEffect(() => {
-        if (!isInitialPositionSync.current) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setMovesLeft(m => Math.max(0, m - 1));
-        } else {
-            isInitialPositionSync.current = false;
-        }
-    }, [playerGridPos.x, playerGridPos.y]);
 
     const allRooms = useMemo(() => {
         if (!grid) return [];
@@ -146,7 +153,7 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
 
     // Handle Jumpscare and Fail sequence
     useEffect(() => {
-        if (movesLeft === 0 && activePopup !== 'fail') {
+        if (timeLeft === 0 && activePopup !== 'fail') {
             const sequence = async () => {
                 // 1. Play sound immediately (1s before image)
                 const thunder = new Audio('/thunder.mp3');
@@ -169,7 +176,7 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
             };
             sequence();
         }
-    }, [movesLeft, setJumpscareActive, setActivePopup, activePopup]);
+    }, [timeLeft, setJumpscareActive, setActivePopup, activePopup]);
 
     useEffect(() => {
         if ((activePopup || isPaused) && typeof document !== 'undefined' && document.exitPointerLock) {
@@ -242,8 +249,8 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
                     </div>
 
                     <div className="text-white font-mono bg-black/40 p-4 border-l-4 border-yellow-500 backdrop-blur-sm animate-pulse">
-                        <div className="text-xs text-zinc-400 uppercase tracking-widest mb-1">Passi Rimanenti</div>
-                        <div className="text-4xl font-black text-yellow-500">{movesLeft}</div>
+                        <div className="text-xs text-zinc-400 uppercase tracking-widest mb-1">Tempo Rimanente</div>
+                        <div className="text-4xl font-black text-yellow-500">{formatTime(timeLeft)}</div>
                     </div>
                 </div>
             )}

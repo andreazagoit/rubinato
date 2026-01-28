@@ -58,7 +58,7 @@ export const useGameStore = create<GameState>()(
         {
             name: 'horror-game-state',
             storage: createJSONStorage(() => cookieStorage),
-            partialize: (state) => ({}), // No longer persisting anything for now
+            partialize: () => ({}), // No longer persisting anything for now
         }
     )
 );
