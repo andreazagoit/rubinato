@@ -287,7 +287,7 @@ export function GameLevel({ onBackToMenu, onGameEnd }: GameLevelProps) {
             {activePopup === 'intro' && (
                 <Popup
                     title="Missione: Er progetto cartellina rossa "
-                    text="La cavallona ha rivelato il tradimento con Grace a David. Devi correre nello studio a cercare le cartelline rosse che ha su di te prima che ti distrugga"
+                    text="La cavallona ha scoperto il tradimento con Grace e l'ha rivelato a David. Devi correre nello studio a cercare le cartelline rosse che ha su di te prima che ti distrugga."
                     buttonText="Continua"
                     onClose={resumeGame}
                     onButtonClick={resumeGame}
