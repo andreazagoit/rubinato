@@ -305,7 +305,7 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
             {activePopup === 'end' && (
                 <Popup
                     title="MISSIONE COMPIUTA"
-                    text="Per ora sei salvo, ma l'unico vincitore qua sará King Ash"
+                    text="Per ora sei salvo, ma adesso inizia la fuga. C'é solo una certezza. gli squali stanno arrivà!"
                     buttonText="Torna al Menu"
                     onButtonClick={onBackToMenu}
                     isClosable={false}
