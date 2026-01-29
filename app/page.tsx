@@ -26,7 +26,10 @@ export default function Page() {
 
     return (
         <ErrorBoundary>
-            <BackgroundMusic />
+            <BackgroundMusic
+                src={view === 'MENU' ? "/sounds/intro.mp3" : "/music.mp3"}
+                volume={view === 'MENU' ? 0.5 : 0.05}
+            />
 
             {activePopup === 'settings' && <SettingsPopup />}
 

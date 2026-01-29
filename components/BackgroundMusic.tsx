@@ -2,18 +2,25 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-export function BackgroundMusic() {
+interface BackgroundMusicProps {
+    src?: string;
+    volume?: number;
+}
+
+export function BackgroundMusic({ src = "/music.mp3", volume = 0.05 }: BackgroundMusicProps) {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+
     useEffect(() => {
         if (audioRef.current) {
-            audioRef.current.volume = 0.05;
+            audioRef.current.volume = volume;
         }
-    }, []);
+    }, [volume]);
 
     useEffect(() => {
         const attemptPlay = () => {
             if (audioRef.current) {
+                // If the source changes, we need to reload and play
                 audioRef.current.play()
                     .then(() => {
                         setIsPlaying(true);
@@ -43,12 +50,12 @@ export function BackgroundMusic() {
             document.removeEventListener('keydown', handleInteraction);
             document.removeEventListener('touchstart', handleInteraction);
         };
-    }, [isPlaying]);
+    }, [isPlaying, src]); // Re-run when src changes
 
     return (
         <audio
             ref={audioRef}
-            src="/music.mp3"
+            src={src}
             loop
             preload="auto"
             style={{ display: 'none' }}
