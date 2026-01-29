@@ -14,7 +14,7 @@ export function CreditsScreen({ result, onBackToMenu }: CreditsScreenProps) {
         { role: "Design", name: "Nessuno (avete visto del design?? io no)" },
         { role: "Musica", name: "Suno.AI" },
         { role: "Calcolo Collisioni", name: "Genio Matematico" },
-        { role: "Abusato", name: "Rubino" },
+        { role: "Tradito", name: "Rubino" },
         { role: "Traditore", name: "Grenbaud" },
     ];
 
