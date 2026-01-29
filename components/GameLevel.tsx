@@ -19,12 +19,13 @@ import { Texture, ROOM_DEFINITIONS } from '@/lib/roomConfig';
 
 interface GameLevelProps {
     onBackToMenu?: () => void;
+    onGameEnd: (result: 'win' | 'lose') => void;
 }
 
 const CELL_SIZE = 10;
 const CULL_RADIUS = 3; // Render rooms within 3 cells of the player
 
-export function GameLevel({ onBackToMenu }: GameLevelProps) {
+export function GameLevel({ onBackToMenu, onGameEnd }: GameLevelProps) {
     const [grid, setGrid] = useState<Grid | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -96,9 +97,9 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
     // Effect to check for win condition
     useEffect(() => {
         if (collectedFolders.size === 3) {
-            setActivePopup('end');
+            onGameEnd('win');
         }
-    }, [collectedFolders.size, setActivePopup]);
+    }, [collectedFolders.size, onGameEnd]);
 
     useEffect(() => {
         try {
@@ -152,8 +153,10 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
     }, [allRooms, playerGridPos]);
 
     // Handle Jumpscare and Fail sequence
+    const hasTriggeredEnd = useRef(false);
     useEffect(() => {
-        if (timeLeft === 0 && activePopup !== 'fail') {
+        if (timeLeft === 0 && activePopup !== 'fail' && !hasTriggeredEnd.current) {
+            hasTriggeredEnd.current = true;
             const sequence = async () => {
                 // 1. Play sound immediately (1s before image)
                 const thunder = new Audio('/thunder.mp3');
@@ -171,12 +174,12 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
                 // 4. Final black screen delay (0.5 seconds)
                 await new Promise(r => setTimeout(r, 500));
 
-                // 5. Show Fail Popup
-                setActivePopup('fail');
+                // 5. Trigger Game End - LOSE
+                onGameEnd('lose');
             };
             sequence();
         }
-    }, [timeLeft, setJumpscareActive, setActivePopup, activePopup]);
+    }, [timeLeft, setJumpscareActive, activePopup, onGameEnd]);
 
     useEffect(() => {
         if ((activePopup || isPaused) && typeof document !== 'undefined' && document.exitPointerLock) {

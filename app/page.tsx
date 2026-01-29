@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { BackgroundMusic } from "@/components/BackgroundMusic";
 import { useGameStore } from "@/lib/store";
 import { SettingsPopup } from "@/components/SettingsPopup";
+import { CreditsScreen } from "@/components/CreditsScreen";
 
 import { KeyboardControls } from "@react-three/drei";
 
@@ -21,8 +22,14 @@ const KEY_MAP = [
 ];
 
 export default function Page() {
-    const [view, setView] = useState<'MENU' | 'GAME'>('MENU');
+    const [view, setView] = useState<'MENU' | 'GAME' | 'CREDITS'>('MENU');
+    const [gameResult, setGameResult] = useState<'win' | 'lose'>('lose');
     const { activePopup, setActivePopup, resetGameState } = useGameStore();
+
+    const handleGameEnd = (result: 'win' | 'lose') => {
+        setGameResult(result);
+        setView('CREDITS');
+    };
 
     return (
         <ErrorBoundary>
@@ -35,8 +42,18 @@ export default function Page() {
 
             {view === 'GAME' && (
                 <KeyboardControls map={KEY_MAP}>
-                    <GameLevel onBackToMenu={() => setView('MENU')} />
+                    <GameLevel
+                        onBackToMenu={() => setView('MENU')}
+                        onGameEnd={handleGameEnd}
+                    />
                 </KeyboardControls>
+            )}
+
+            {view === 'CREDITS' && (
+                <CreditsScreen
+                    result={gameResult}
+                    onBackToMenu={() => setView('MENU')}
+                />
             )}
 
             {view === 'MENU' && (
