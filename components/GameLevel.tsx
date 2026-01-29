@@ -248,7 +248,13 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
                         </div>
                     </div>
 
-                    <div className="text-white font-mono bg-black/40 p-4 border-l-4 border-yellow-500 backdrop-blur-sm animate-pulse">
+                    <div
+                        className="text-white font-mono bg-black/40 p-4 border-l-4 border-yellow-500 backdrop-blur-sm"
+                        style={{
+                            opacity: Math.max(0, Math.min(1, (timeLeft - 30) / 10)),
+                            transition: 'opacity 1s linear'
+                        }}
+                    >
                         <div className="text-xs text-zinc-400 uppercase tracking-widest mb-1">Tempo Rimanente</div>
                         <div className="text-4xl font-black text-yellow-500">{formatTime(timeLeft)}</div>
                     </div>
@@ -265,7 +271,6 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
                         <h2 className="text-6xl font-black text-red-600 tracking-tighter uppercase italic">PAUSED</h2>
                         <div className="flex flex-col gap-4">
                             <button onClick={resumeGame} className="px-12 py-4 bg-zinc-100 text-black font-black uppercase hover:bg-white transition-colors tracking-widest text-lg">Resume</button>
-                            <button onClick={() => setActivePopup('settings')} className="px-12 py-4 border-2 border-zinc-500 text-zinc-500 font-black uppercase hover:border-white hover:text-white transition-all tracking-widest">Impostazioni</button>
                             <button onClick={onBackToMenu} className="px-12 py-4 border-2 border-zinc-500 text-zinc-500 font-black uppercase hover:border-white hover:text-white transition-all tracking-widest">Back to Menu</button>
                         </div>
                     </div>
@@ -291,7 +296,7 @@ export function GameLevel({ onBackToMenu }: GameLevelProps) {
                 <Popup
                     title="SEI STATO RUBINATO"
                     text="Hai esaurito il tempo. David ti ha trovato e non ha avuto pietà."
-                    buttonText="Riprova Infiltrazione"
+                    buttonText="Riprova"
                     onButtonClick={() => window.location.reload()}
                     isClosable={false}
                 />
@@ -353,7 +358,7 @@ function GameContent({
         [Texture.WALL_CONCRETE_PANEL]: Texture.WALL_CONCRETE_PANEL,
         [Texture.WALL_BRUTALIST_DARK]: Texture.WALL_BRUTALIST_DARK,
         [Texture.CEILING_CONCRETE_DARK]: Texture.CEILING_CONCRETE_DARK,
-        [Texture.CEILING_INDUSTRIAL_DARK]: Texture.CEILING_INDUSTRIAL_DARK,
+        [Texture.CEILING_INDUSTRIAL_DARK]: Texture.CEILING_INDUSTRIAL_DARK
     });
 
     // Configure textures
